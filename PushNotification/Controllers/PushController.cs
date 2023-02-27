@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using PushNotification.Context;
+using PushNotification.Hubs;
+using PushNotification.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using PushNotification.Context;
-using PushNotification.Models;
-using PushNotification.Hubs;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.AspNetCore.Authorization;
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace PushNotification.Controllers
@@ -26,15 +26,15 @@ namespace PushNotification.Controllers
             _hubContext = hubContext;
         }
         // GET: api/<controller>
-        public async Task<IActionResult> Get(int pageNumber,int pageSize)
+        public async Task<IActionResult> Get(int pageNumber, int pageSize)
         {
-            var items = await _context.Notifications
+            List<Notifications> items = await _context.Notifications
                   .OrderByDescending(o => o.Id)
                   .Skip((pageNumber - 1) * pageSize)
                   .Take(pageSize)
                   .ToListAsync();
 
-            var count = _context.Notifications.Count();
+            int count = _context.Notifications.Count();
             var info = new
             {
                 items = items,
@@ -47,28 +47,18 @@ namespace PushNotification.Controllers
 
         }
 
-        [HttpGet("v2")]
-        public IEnumerable<string> myNewFunc()
-        {
-
-
-
-
-            return new string[] { "value100", "value200" };
-        }
 
         [HttpPost("Receive")]
         [Authorize]
-        public async Task<IActionResult> Post([FromForm]ReceiveNotification rs)
+        public async Task<IActionResult> Post([FromBody] ReceiveNotification rs)
         {
 
             try
             {
 
+                NotificationHub hb = new NotificationHub(_context, _hubContext);
 
-                var hb = new NotificationHub(_context, _hubContext);
-
-                if(rs.user == "-1")
+                if (rs.user == -1)
                 {
                     await hb.CheckBroadCast(rs);
                 }
@@ -77,12 +67,12 @@ namespace PushNotification.Controllers
                     await hb.CheckNotifications(rs);
 
                 }
-                return Ok(new { Code=1,Msg="ok"});
+                return Ok(new { Code = 1, Msg = "ok" });
 
             }
             catch (Exception ex)
             {
-                return BadRequest(new {Code=9,Msg=ex.ToString() });
+                return BadRequest(new { Code = 9, Msg = ex.ToString() });
             }
 
 
@@ -91,6 +81,34 @@ namespace PushNotification.Controllers
 
         }
 
+        [HttpPost("ReceiveGroup")]
+        [Authorize]
+        public async Task<IActionResult> Post2([FromBody] List<ReceiveNotification> rs)
+        {
+
+            try
+            {
+
+                NotificationHub hb = new NotificationHub(_context, _hubContext);
+
+                foreach (ReceiveNotification item in rs)
+                {
+                    await hb.CheckNotifications(item);
+                }
+
+                return Ok(new { Code = 1, Msg = "ok" });
+
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Code = 9, Msg = ex.ToString() });
+            }
+
+
+
+
+
+        }
 
     }
 }

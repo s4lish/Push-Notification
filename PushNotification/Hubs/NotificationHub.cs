@@ -28,15 +28,15 @@ namespace PushNotification.Hubs
 
         public async Task CheckNotifications(ReceiveNotification rs)
         {
-            var st = new Notifications();
+            Notifications st = new Notifications();
 
             st.Content = rs.Content;
             st.datetime = DateTime.Now;
 
             st.status = false;
-            st.type = rs.type;
+            st.type = int.Parse(rs.type);
             st.keyuser = Guid.NewGuid();
-            st.user = rs.user;
+            st.user = rs.user.ToString();
             st.icon = rs.icon;
             st.attach1 = rs.attach1;
             st.attach2 = rs.attach2;
@@ -46,19 +46,18 @@ namespace PushNotification.Hubs
 
             st.Reserve1 = rs.Reserve1;
             st.Reserve2 = rs.Reserve2;
-            st.Reserve3 = rs.Reserve3;
+            st.Reserve3 = JsonConvert.SerializeObject(rs.Reserve3);
 
-            string userHub;
-            if (Users.TryGetValue(rs.user, out userHub))
+            if (Users.TryGetValue(rs.user.ToString(), out string userHub))
             {
                 st.status = true;
-                var lsN = new List<Notifications>();  // برای ایجاد جیسون آرایه ای
+                List<Notifications> lsN = new List<Notifications>();  // برای ایجاد جیسون آرایه ای
                 lsN.Add(st);
                 //var cid = userHub.ConnectionIds.ToList();
-                var cid = userHub;
+                string cid = userHub;
                 var selectedNoti = lsN.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToList();
 
-                var jsonString = JsonConvert.SerializeObject(selectedNoti);
+                string jsonString = JsonConvert.SerializeObject(selectedNoti);
 
                 await _hubContext.Clients.Client(cid).SendAsync("ReceiveNotifications", jsonString);
             }
@@ -69,15 +68,15 @@ namespace PushNotification.Hubs
 
         public async Task CheckBroadCast(ReceiveNotification rs)
         {
-            var st = new Notifications();
+            Notifications st = new Notifications();
 
             st.Content = rs.Content;
             st.datetime = DateTime.Now;
 
             st.status = false;
-            st.type = rs.type;
+            st.type = int.Parse(rs.type);
             st.keyuser = Guid.NewGuid();
-            st.user = rs.user;
+            st.user = rs.user.ToString();
             st.icon = rs.icon;
             st.attach1 = rs.attach1;
             st.attach2 = rs.attach2;
@@ -87,31 +86,31 @@ namespace PushNotification.Hubs
 
             st.Reserve1 = rs.Reserve1;
             st.Reserve2 = rs.Reserve2;
-            st.Reserve3 = rs.Reserve3;
+            st.Reserve3 = JsonConvert.SerializeObject(rs.Reserve3);
 
-            var lsN = new List<Notifications>();  // برای ایجاد جیسون آرایه ای
+            List<Notifications> lsN = new List<Notifications>();  // برای ایجاد جیسون آرایه ای
             lsN.Add(st);
             //var cid = userHub.ConnectionIds.ToList();
             //var cid = userHub.ConnectionIds.LastOrDefault();
             var selectedNoti = lsN.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToList();
 
-            var jsonString = JsonConvert.SerializeObject(selectedNoti);
+            string jsonString = JsonConvert.SerializeObject(selectedNoti);
 
             await _hubContext.Clients.All.SendAsync("ReceiveBroadCast", jsonString);
         }
 
         public override Task OnConnectedAsync()
         {
-            var req = Context.GetHttpContext();
+            Microsoft.AspNetCore.Http.HttpContext req = Context.GetHttpContext();
 
             string userName = req.Request.Query["userID"];
             string connectionId = Context.ConnectionId;
 
             lock (connectionId)
             {
-                var user = Users.GetOrAdd(userName, connectionId);
+                string user = Users.GetOrAdd(userName, connectionId);
 
-                var lg = new LogConnect();
+                LogConnect lg = new LogConnect();
                 lg.userID = userName;
                 lg.Type = 1;
 
@@ -121,20 +120,19 @@ namespace PushNotification.Hubs
                 Clients.Others.SendAsync(userName);
             }
 
-            string userHub;
-            if (Users.TryGetValue(userName, out userHub))
+            if (Users.TryGetValue(userName, out string userHub))
             {
-                var allNoti = _context.Notifications.Where(x => !x.status && x.user == userName);
+                IQueryable<Notifications> allNoti = _context.Notifications.Where(x => !x.status && x.user == userName);
                 if (allNoti.Any())
                 {
                     var selectedNoti = allNoti.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToList();
-                    var jsonString = JsonConvert.SerializeObject(selectedNoti);
+                    string jsonString = JsonConvert.SerializeObject(selectedNoti);
                     //var cid = userHub.ConnectionIds.ToList();
-                    var cid = userHub;
+                    string cid = userHub;
 
                     Clients.Client(cid).SendAsync("ReceiveNotifications", jsonString);
 
-                    foreach (var item in allNoti.ToList())
+                    foreach (Notifications item in allNoti.ToList())
                     {
                         item.status = true;
                     }
@@ -147,7 +145,7 @@ namespace PushNotification.Hubs
 
         public override Task OnDisconnectedAsync(Exception exception)
         {
-            var req = Context.GetHttpContext();
+            Microsoft.AspNetCore.Http.HttpContext req = Context.GetHttpContext();
 
             string userName = req.Request.Query["userID"];
             string connectionId = Context.ConnectionId;
@@ -162,7 +160,7 @@ namespace PushNotification.Hubs
                     string removedUser;
                     Users.TryRemove(userName, out removedUser);
 
-                    var lg = new LogConnect();
+                    LogConnect lg = new LogConnect();
                     lg.userID = userName;
                     lg.Type = 2;
 

@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -27,15 +23,31 @@ namespace PushNotification.Controllers
         // GET: api/<controller>
         [AllowAnonymous]
         [HttpPost("check")]
-        public IActionResult Login([FromForm]UserModel login)
+        public IActionResult Login([FromForm] UserModel login)
         {
-            var user = AuthenticateUser(login);
+            UserModel user = AuthenticateUser(login);
 
             if (user != null)
             {
-                var tokenString = GenerateJSONWebToken(user);
-                
-                return Ok(new {token = tokenString });
+                string tokenString = GenerateJSONWebToken(user);
+
+                return Ok(new { token = tokenString });
+            }
+
+            return Unauthorized(new { token = "" });
+        }
+
+        [AllowAnonymous]
+        [HttpPost("check2")]
+        public IActionResult Login2([FromBody] UserModel login)
+        {
+            UserModel user = AuthenticateUser(login);
+
+            if (user != null)
+            {
+                string tokenString = GenerateJSONWebToken(user);
+
+                return Ok(new { token = tokenString });
             }
 
             return Unauthorized(new { token = "" });
@@ -43,8 +55,8 @@ namespace PushNotification.Controllers
 
         private string GenerateJSONWebToken(UserModel userInfo)
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
-            var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha512);
+            SymmetricSecurityKey securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            SigningCredentials signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha512);
 
             //var secretKey2 = Encoding.UTF8.GetBytes(_config["Jwt:Key"]);
             //var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey2), SecurityAlgorithms.HmacSha256Signature);
@@ -65,22 +77,22 @@ namespace PushNotification.Controllers
             //       new Claim(ClaimTypes.NameIdentifier, "123"), //user.Id
             //    };
 
-            var descriptor = new SecurityTokenDescriptor
+            SecurityTokenDescriptor descriptor = new SecurityTokenDescriptor
             {
                 Issuer = _config["Jwt:Issuer"],
                 Audience = _config["Jwt:Audience"],
                 IssuedAt = DateTime.Now,
-                
+
                 //NotBefore = DateTime.Now,
-                Expires = DateTime.Now.AddHours(13),
+                Expires = DateTime.Now.AddHours(24),
                 SigningCredentials = signingCredentials,
                 //EncryptingCredentials = encryptingCredentials,
                 //Subject = new ClaimsIdentity(claims)
             };
 
-            var tokenHandler = new JwtSecurityTokenHandler();
+            JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
 
-            var securityToken = tokenHandler.CreateToken(descriptor);
+            SecurityToken securityToken = tokenHandler.CreateToken(descriptor);
             string encryptedJwt = tokenHandler.WriteToken(securityToken);
 
             return encryptedJwt;
