@@ -25,6 +25,16 @@ namespace PushNotification.Controllers
             _context = context;
             _hubContext = hubContext;
         }
+
+        [HttpGet("first")]
+        [AllowAnonymous]
+        public IActionResult GetFirstt(int pageNumber, int pageSize)
+        {
+
+
+            return Ok("start push notification");
+
+        }
         // GET: api/<controller>
         public async Task<IActionResult> Get(int pageNumber, int pageSize)
         {

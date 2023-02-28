@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using PushNotification.Context;
 using PushNotification.Models;
@@ -62,8 +63,10 @@ namespace PushNotification.Hubs
                 await _hubContext.Clients.Client(cid).SendAsync("ReceiveNotifications", jsonString);
             }
 
+
             await _context.Notifications.AddAsync(st);
             await _context.SaveChangesAsync();
+
         }
 
         public async Task CheckBroadCast(ReceiveNotification rs)
@@ -99,7 +102,7 @@ namespace PushNotification.Hubs
             await _hubContext.Clients.All.SendAsync("ReceiveBroadCast", jsonString);
         }
 
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
             Microsoft.AspNetCore.Http.HttpContext req = Context.GetHttpContext();
 
@@ -108,72 +111,79 @@ namespace PushNotification.Hubs
 
             lock (connectionId)
             {
-                string user = Users.GetOrAdd(userName, connectionId);
-
-                LogConnect lg = new LogConnect();
-                lg.userID = userName;
-                lg.Type = 1;
-
-                _context.LogConnect.Add(lg);
-                _context.SaveChangesAsync();
-
-                Clients.Others.SendAsync(userName);
+                Users.GetOrAdd(userName, connectionId);
             }
 
-            if (Users.TryGetValue(userName, out string userHub))
+            LogConnect lg = new LogConnect();
+            lg.userID = userName;
+            lg.Type = 1;
+
+            _context.LogConnect.Add(lg);
+            await _context.SaveChangesAsync();
+
+            //Clients.Others.SendAsync(userName);
+
+            bool checkvalue = false;
+            string userHub;
+            lock (connectionId)
+            {
+                checkvalue = Users.TryGetValue(userName, out userHub);
+            }
+
+            if (checkvalue)
             {
                 IQueryable<Notifications> allNoti = _context.Notifications.Where(x => !x.status && x.user == userName);
-                if (allNoti.Any())
+
+                var selectedNoti = await allNoti.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToListAsync();
+
+                if (selectedNoti.Any())
                 {
-                    var selectedNoti = allNoti.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToList();
                     string jsonString = JsonConvert.SerializeObject(selectedNoti);
                     //var cid = userHub.ConnectionIds.ToList();
                     string cid = userHub;
 
-                    Clients.Client(cid).SendAsync("ReceiveNotifications", jsonString);
+                    await Clients.Client(cid).SendAsync("ReceiveNotifications", jsonString);
 
                     foreach (Notifications item in allNoti.ToList())
                     {
                         item.status = true;
                     }
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             }
 
-            return base.OnConnectedAsync();
+            await base.OnConnectedAsync();
         }
 
-        public override Task OnDisconnectedAsync(Exception exception)
+        public override async Task OnDisconnectedAsync(Exception exception)
         {
             Microsoft.AspNetCore.Http.HttpContext req = Context.GetHttpContext();
 
             string userName = req.Request.Query["userID"];
             string connectionId = Context.ConnectionId;
 
-            string user;
-            Users.TryGetValue(userName, out user);
-
-            if (user != null)
+            bool checkRemove = false;
+            lock (connectionId)
             {
-                lock (connectionId)
-                {
-                    string removedUser;
-                    Users.TryRemove(userName, out removedUser);
-
-                    LogConnect lg = new LogConnect();
-                    lg.userID = userName;
-                    lg.Type = 2;
-
-                    _context.LogConnect.Add(lg);
-                    _context.SaveChangesAsync();
-                    Clients.Others.SendAsync(userName);
-                }
+                checkRemove = Users.TryRemove(userName, out string removedUser);
             }
+
+            if (checkRemove)
+            {
+                LogConnect lg = new LogConnect();
+                lg.userID = userName;
+                lg.Type = 2;
+
+                _context.LogConnect.Add(lg);
+                await _context.SaveChangesAsync();
+                //Clients.Others.SendAsync(userName);
+            }
+
 
             //var us = Users.Keys.ToList();
             // Clients.All.SendAsync("ReceiveListsUsers", us);
 
-            return base.OnDisconnectedAsync(exception);
+            await base.OnDisconnectedAsync(exception);
         }
     }
 

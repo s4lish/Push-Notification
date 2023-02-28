@@ -1,24 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using PushNotification.Context;
-using Microsoft.EntityFrameworkCore;
-using PushNotification.Hubs;
-using Microsoft.AspNetCore.Http.Connections;
-using PushNotification.Middleware;
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Tokens;
+using PushNotification.Context;
+using PushNotification.Hubs;
+using PushNotification.Middleware;
+using System;
+using System.Text;
 
 namespace PushNotification
 {
@@ -66,13 +61,14 @@ namespace PushNotification
                         builder =>
                         {
                             builder.AllowAnyHeader()
+                            .WithOrigins("https://185.172.68.140:4433", "https://vosoul.nigc-wazar.ir", "https://185.172.68.140:8030")
                                    .AllowAnyMethod()
                                    .SetIsOriginAllowed((host) => true)
                                    .AllowCredentials();
                         }));
 
 
-            var connection = Configuration["ConnectionStrings:PushDB"];
+            string connection = Configuration["ConnectionStrings:PushDB"];
 
             services.AddDbContext<PushDBContext>(opt => opt.UseSqlServer(connection));
         }
@@ -90,30 +86,29 @@ namespace PushNotification
             app.UseHttpsRedirection();
             app.UseMiddleware<WebSocketsMiddleware>();
             app.UseAuthentication();
-
             app.UseRouting();
-            
+
             app.UseAuthorization();
-            
+
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
-                
+
             });
 
 
 
             app.UseWebSockets();
-         
+
             app.UseSignalR(routes =>
             {
-                var desiredTransports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
+                HttpTransportType desiredTransports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
 
                 routes.MapHub<NotificationHub>("/notificationHub", (options) =>
                 {
                     options.Transports = desiredTransports;
-                    
+
                 });
 
             });
