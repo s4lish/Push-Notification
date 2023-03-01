@@ -53,19 +53,20 @@ namespace PushNotification
             services.AddSignalR().AddHubOptions<NotificationHub>(options =>
             {
                 options.EnableDetailedErrors = true;
-                options.KeepAliveInterval = TimeSpan.FromMinutes(1);
+                options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+                options.KeepAliveInterval = TimeSpan.FromSeconds(10);
 
             });
 
-            services.AddCors(options => options.AddPolicy("CorsPolicy",
-                        builder =>
-                        {
-                            builder.AllowAnyHeader()
-                            .WithOrigins("https://185.172.68.140:4433", "https://vosoul.nigc-wazar.ir", "https://185.172.68.140:8030")
-                                   .AllowAnyMethod()
-                                   .SetIsOriginAllowed((host) => true)
-                                   .AllowCredentials();
-                        }));
+
+            services.AddCors(options =>
+            {
+                options.AddPolicy("CorsPolicy",
+                    builder => builder.WithOrigins("https://vosoul.nigc-wazar.ir", "https://localhost:44350") // Replace with the URL of your client application
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+            });
 
 
             string connection = Configuration["ConnectionStrings:PushDB"];
@@ -81,37 +82,39 @@ namespace PushNotification
             {
                 app.UseDeveloperExceptionPage();
             }
-
-            app.UseCors("CorsPolicy");
+            //app.UseHsts();
             app.UseHttpsRedirection();
             app.UseMiddleware<WebSocketsMiddleware>();
-            app.UseAuthentication();
+
             app.UseRouting();
+            app.UseCors("CorsPolicy");
 
+            app.UseAuthentication();
             app.UseAuthorization();
-
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-
-            });
-
 
 
             app.UseWebSockets();
 
             app.UseSignalR(routes =>
             {
-                HttpTransportType desiredTransports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
+                //HttpTransportType desiredTransports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
 
                 routes.MapHub<NotificationHub>("/notificationHub", (options) =>
                 {
-                    options.Transports = desiredTransports;
-
+                    options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
                 });
 
             });
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                //endpoints.MapHub<NotificationHub>("/notificationHub", (options) =>
+                //{
+                //    options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
+                //});
+            });
+
         }
 
         private bool LifetimeValidator(DateTime? notBefore, DateTime? expires, SecurityToken token, TokenValidationParameters @params)

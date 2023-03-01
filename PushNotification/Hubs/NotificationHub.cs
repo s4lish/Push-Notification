@@ -26,7 +26,7 @@ namespace PushNotification.Hubs
             _context = context;
             _hubContext = hubContext;
         }
-
+        static readonly object Identity = new object();
         public async Task CheckNotifications(ReceiveNotification rs)
         {
             Notifications st = new Notifications();
@@ -49,7 +49,15 @@ namespace PushNotification.Hubs
             st.Reserve2 = rs.Reserve2;
             st.Reserve3 = JsonConvert.SerializeObject(rs.Reserve3);
 
-            if (Users.TryGetValue(rs.user.ToString(), out string userHub))
+            string userHub;
+            bool checkvalue = false;
+
+            lock (Identity)
+            {
+                checkvalue = Users.TryGetValue(rs.user.ToString(), out userHub);
+            }
+
+            if (checkvalue)
             {
                 st.status = true;
                 List<Notifications> lsN = new List<Notifications>();  // برای ایجاد جیسون آرایه ای
@@ -109,7 +117,7 @@ namespace PushNotification.Hubs
             string userName = req.Request.Query["userID"];
             string connectionId = Context.ConnectionId;
 
-            lock (connectionId)
+            lock (Identity)
             {
                 Users.GetOrAdd(userName, connectionId);
             }
@@ -125,7 +133,7 @@ namespace PushNotification.Hubs
 
             bool checkvalue = false;
             string userHub;
-            lock (connectionId)
+            lock (Identity)
             {
                 checkvalue = Users.TryGetValue(userName, out userHub);
             }
@@ -163,7 +171,7 @@ namespace PushNotification.Hubs
             string connectionId = Context.ConnectionId;
 
             bool checkRemove = false;
-            lock (connectionId)
+            lock (Identity)
             {
                 checkRemove = Users.TryRemove(userName, out string removedUser);
             }
