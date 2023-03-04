@@ -1,13 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using PushNotification.Context;
 using PushNotification.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace PushNotification.Hubs
@@ -47,7 +47,7 @@ namespace PushNotification.Hubs
 
             st.Reserve1 = rs.Reserve1;
             st.Reserve2 = rs.Reserve2;
-            st.Reserve3 = JsonConvert.SerializeObject(rs.Reserve3);
+            st.Reserve3 = JsonSerializer.Serialize(rs.Reserve3);
 
             string userHub;
             bool checkvalue = false;
@@ -66,7 +66,7 @@ namespace PushNotification.Hubs
                 string cid = userHub;
                 var selectedNoti = lsN.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToList();
 
-                string jsonString = JsonConvert.SerializeObject(selectedNoti);
+                string jsonString = JsonSerializer.Serialize(selectedNoti);
 
                 await _hubContext.Clients.Client(cid).SendAsync("ReceiveNotifications", jsonString);
             }
@@ -97,7 +97,7 @@ namespace PushNotification.Hubs
 
             st.Reserve1 = rs.Reserve1;
             st.Reserve2 = rs.Reserve2;
-            st.Reserve3 = JsonConvert.SerializeObject(rs.Reserve3);
+            st.Reserve3 = JsonSerializer.Serialize(rs.Reserve3);
 
             List<Notifications> lsN = new List<Notifications>();  // برای ایجاد جیسون آرایه ای
             lsN.Add(st);
@@ -105,7 +105,7 @@ namespace PushNotification.Hubs
             //var cid = userHub.ConnectionIds.LastOrDefault();
             var selectedNoti = lsN.Select(s => new { s.keyuser, s.icon, s.type, s.Content, s.attach1, s.attach2, s.Title, s.Color, s.Sound, s.Reserve1, s.Reserve2, s.Reserve3, s.datetime }).ToList();
 
-            string jsonString = JsonConvert.SerializeObject(selectedNoti);
+            string jsonString = JsonSerializer.Serialize(selectedNoti);
 
             await _hubContext.Clients.All.SendAsync("ReceiveBroadCast", jsonString);
         }
@@ -146,7 +146,7 @@ namespace PushNotification.Hubs
 
                 if (selectedNoti.Any())
                 {
-                    string jsonString = JsonConvert.SerializeObject(selectedNoti);
+                    string jsonString = JsonSerializer.Serialize(selectedNoti);
                     //var cid = userHub.ConnectionIds.ToList();
                     string cid = userHub;
 

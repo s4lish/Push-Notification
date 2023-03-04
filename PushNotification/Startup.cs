@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,8 +45,6 @@ namespace PushNotification
                     };
                 });
 
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
-
             IdentityModelEventSource.ShowPII = true;
 
             services.AddSignalR().AddHubOptions<NotificationHub>(options =>
@@ -82,7 +79,7 @@ namespace PushNotification
             {
                 app.UseDeveloperExceptionPage();
             }
-            //app.UseHsts();
+            app.UseHsts();
             app.UseHttpsRedirection();
             app.UseMiddleware<WebSocketsMiddleware>();
 
@@ -95,24 +92,13 @@ namespace PushNotification
 
             app.UseWebSockets();
 
-            app.UseSignalR(routes =>
-            {
-                //HttpTransportType desiredTransports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
-
-                routes.MapHub<NotificationHub>("/notificationHub", (options) =>
-                {
-                    options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
-                });
-
-            });
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
-                //endpoints.MapHub<NotificationHub>("/notificationHub", (options) =>
-                //{
-                //    options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
-                //});
+                endpoints.MapHub<NotificationHub>("/notificationHub", (options) =>
+                {
+                    options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
+                });
             });
 
         }
